@@ -1,0 +1,60 @@
+def get_main_reply_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="about")],
+            [KeyboardButton(text="start"), KeyboardButton(text="Help")],
+        ],
+        resize_keyboard=True,
+    )
+    return keyboard
+
+
+def get_main_inline_keyboard():
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Open site where you can watch video with Sasha and Sabina",
+                    url="https://google.com",
+                )
+            ],
+            [InlineKeyboardButton(text="More info", callback_data="info more")],
+        ]
+    )
+    return keyboard
+
+
+@router.callback_query(lambda c: c.data == "info more")
+async def proccess_more_info(callback: CallbackQuery):
+    await callback.message.answer("There is more information about me")
+    await callback.answer()
+
+
+@router.message(Command("start"))
+@router.message(F.text.lower() == "start")
+async def start(message: Message):
+    await message.answer("_Hello_ *Bro*\n\nType /help for help", parse_mode="Markdown")
+
+
+@router.message(Command("help"))
+@router.message(F.text.lower() == "help")
+async def help_cmd(message: Message):
+    await message.answer(
+        "Commands:\n/start - <b>start</b> bot\n <i>/help</i> - my <a href='https://google.com'>commands</a> \n/about - about us",
+        parse_mode="HTML",
+        reply_markup=get_main_reply_keyboard(),
+    )
+
+
+@router.message(Command("about"))
+@router.message(F.text.lower() == "about")
+async def about_cmd(message: Message):
+    await message.answer(
+        f"It's command for get info about Bot. Your Name: {message.from_user.first_name}",
+        reply_markup=get_main_inline_keyboard(),
+    )
+
+
+@router.message()
+async def about_cmd(message: Message):
+    await message.answer("Text message")
