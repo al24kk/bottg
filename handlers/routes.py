@@ -2,75 +2,64 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message
 import aiosqlite
+import asyncio
+from aiogram import Bot
 
 router = Router()
 
 
-# -------
-
-DB_NAME = "al24k.sql"
+subscribers = set()
 
 
-async def init_db():
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(
-            """
-			CREATE TABLE IF NOT EXISTS users(
-						id INTEGER PRIMARY KEY,
-						full_name TEXT,
-						age INTEGER
-			)
-                         """
-        )
-        await db.commit()
+async def notifier(bot):
+    while True:
+        if subscribers:
+            for user_id in list(subscribers):
+                try:
+                    await bot.send_message(user_id, "don't worry it's just a spam")
+                except Exception:
+                    pass
 
-
-async def add_user(full_name, age):
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(
-            "INSERT INTO users (full_name, age) VALUES(?, ?)", (full_name, age)
-        )
-        await db.commit()
-
-
-async def get_users():
-    async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT full_name, age FROM users")
-        result = await cursor.fetchall()
-        return result
-
-
-# -------
+        await asyncio.sleep(10)
 
 
 @router.message(Command("start"))
 async def start(message: Message):
-    await init_db()
-    await message.answer("Hello!\nType /reg AGE")
+    await message.answer(
+        "Hello!\n"
+        "I can help you with mailing!\n\n"
+        "Commands: \n"
+        "/subscribe - subscribe for mailing\n"
+        "/unsubscribe - unsubscribe from mailing\n"
+        "/subscribers - list of subscribers\n"
+    )
 
 
-@router.message(Command("reg"))
-async def reg(message: Message):
-    parts = message.text.strip().split()
+@router.message(Command("subscribe"))
+async def sub(message: Message):
+    user_id = message.from_user.id
 
-    if len(parts) != 2 or not parts[1].isdigit():
-        await message.answer("Enter the command right")
+    subscribers.add(user_id)
+
+    await message.answer("You subscribed")
+
+
+@router.message(Command("unsubscribe"))
+async def unsub(message: Message):
+    user_id = message.from_user.id
+
+    subscribers.discard(user_id)
+
+    await message.answer("You unsubscribed")
+
+
+@router.message(Command("subscribers"))
+async def subs(message: Message):
+    if not subscribers:
+        await message.answer("")
         return
 
-    await add_user(message.from_user.full_name, int(parts[1]))
-
-    await message.answer("Registration is done!")
-
-
-@router.message(Command("users"))
-async def users(message: Message):
-    users = await get_users()
-
-    if not users:
-        await message.answer("Users is not exist")
-        return
-
-    text = "User in base:\n\n"
-    for full_name, age in users:
-        text += f"- {full_name} - <code>{age}</code>\n"
-    await message.answer(text, parse_mode="HTML")
+    text = "Subscribers: \n"
+    for uid in subscribers:
+        text += f"{uid}\n"
+    await message.answer(text)
